@@ -4,28 +4,27 @@
 
     Shows a specific revision of a file 
 
+    @copyright: 2013 Ruben Sanchez <ruben.flex@gmail.com>,
     @license: GNU GPL, see COPYING for details.
 """
-from MoinMoin import wikiutil
+from cStringIO import StringIO
 from pysvn import wc_status_kind, opt_revision_kind, wc_notify_action, depth
 import pysvn
-from cStringIO import StringIO
-from MoinMoin.parser.highlight import Parser, PygmentsFormatter
+from MoinMoin import wikiutil
+from MoinMoin.parser.highlight import Parser
 
 def macro_SVNViewer(macro, url, file_type='text', revision_number='HEAD', start=None, end=None):
     result = ''
     client = pysvn.Client()
-    if revision_number is None or 'HEAD' in revision_number.upper():
-        revision = pysvn.Revision(pysvn.opt_revision_kind.head)
-    else:
+    if is_number(revision_number):
         revision = pysvn.Revision(pysvn.opt_revision_kind.number, int(revision_number))
+    else: 
+        revision = pysvn.Revision(pysvn.opt_revision_kind.head)
     output = client.cat(url, revision)
     out = StringIO(output)
     lines = out.readlines()
     x, y = clean_range(start, end, len(lines))
-    chosen_lines = lines[x-1:y]
-    for line in chosen_lines:
-        result += line
+    result += u''.join(lines[x-1:y])
     parser = Parser(result, macro.request, format_args=file_type)
     parser.num_start = x
     parser.format(macro.request.formatter)
@@ -33,19 +32,21 @@ def macro_SVNViewer(macro, url, file_type='text', revision_number='HEAD', start=
     return ''
 
 def clean_range(start, end, limit):
-    default_range = (1, limit)
-    if start is None and end is None:
-        return default_range
-    if start is not None and end is None:
+    #cleaning start
+    if start is None or is_number(start) == False or int(start) > limit:
+        start = 1
+    else:
         start = int(start)
-        if start >= limit:
-            return default_range
-        else:
-            return (start, limit)
-    if start is not None and end is not None:
-        start = int(start)
+    #cleaning end
+    if end is None or is_number(end) == False or int(end) > limit or int(end) < start:
+        end = limit
+    else:
         end = int(end)
-        if start > end or start >= limit:
-            return default_range
-        else:
-            return (start, end)
+    return start, end
+
+def is_number(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
