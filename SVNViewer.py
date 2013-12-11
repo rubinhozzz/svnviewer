@@ -26,7 +26,7 @@ def macro_SVNViewer(macro, url, file_type='text', revision_number='HEAD', start=
     chosen_lines = lines[x-1:y]
     for line in chosen_lines:
         result += line
-    parser = Parser("<?print 'eeeeeeeeeeeeee';\necho 'dddd';", macro.request, format_args=file_type)
+    parser = Parser(result, macro.request, format_args=file_type)
     parser.num_start = x
     parser.format(macro.request.formatter)
     del out
