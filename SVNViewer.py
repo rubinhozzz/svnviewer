@@ -13,25 +13,27 @@ import pysvn
 from MoinMoin import wikiutil
 from MoinMoin.parser.highlight import Parser
 
-def macro_SVNViewer(macro, url, file_type='text', revision_number='HEAD', start=None, end=None):
+def macro_SVNViewer(macro, url, file_type, revision_number, start, end):
     req = macro.request
-    out = StringIO.StringIO()
-    req.redirect(out)
     client = pysvn.Client()
     try:
-        if revision_number.strip().upper() == 'HEAD':
+        if revision_number is None or revision_number.strip().upper() == 'HEAD':
             revno = client.info2(url)[0][1].rev.number
         else:
             revno = int(revision_number)
-    except (ValueError, TypeError):
+    except (ValueError, AttributeError, IndexError):
         revision = pysvn.Revision(pysvn.opt_revision_kind.head)
     else:
         revision = pysvn.Revision(pysvn.opt_revision_kind.number, revno)
     output = client.cat(url, revision)
-    lines = output.splitlines(1)
+    lines = output.splitlines(True)
     x, y = clean_range(start, end, len(lines))
-    parser = Parser(u''.join(lines[x-1:y]), req, format_args=file_type)
+    if file_type is None:
+        file_type = 'text'
+    parser = Parser(''.join(lines[x-1:y]), req, format_args=file_type)
     parser.num_start = x
+    out = StringIO.StringIO()
+    req.redirect(out)
     parser.format(req.formatter)
     result = out.getvalue()
     req.redirect()
@@ -48,7 +50,6 @@ def clean_range(start, end, limit):
             start = 1
 
     try:
-        print end
         end = int(end)
     except (ValueError, TypeError):
         end = limit
