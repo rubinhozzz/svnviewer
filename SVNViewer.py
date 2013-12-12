@@ -14,39 +14,43 @@ from MoinMoin import wikiutil
 from MoinMoin.parser.highlight import Parser
 
 def macro_SVNViewer(macro, url, file_type='text', revision_number='HEAD', start=None, end=None):
+    req = macro.request
+    out = StringIO.StringIO()
+    req.redirect(out)
     client = pysvn.Client()
     try:
         if revision_number.strip().upper() == 'HEAD':
             revno = client.info2(url)[0][1].rev.number
         else:
             revno = int(revision_number)
-    except:
+    except (ValueError, TypeError):
         revision = pysvn.Revision(pysvn.opt_revision_kind.head)
     else:
         revision = pysvn.Revision(pysvn.opt_revision_kind.number, revno)
     output = client.cat(url, revision)
-    out = StringIO.StringIO(output)
-    lines = out.readlines()
+    lines = output.splitlines(1)
     x, y = clean_range(start, end, len(lines))
-    result = u''.join(lines[x-1:y])
-    parser = Parser(result, macro.request, format_args=file_type)
+    parser = Parser(u''.join(lines[x-1:y]), req, format_args=file_type)
     parser.num_start = x
-    parser.format(macro.request.formatter)
+    parser.format(req.formatter)
+    result = out.getvalue()
+    req.redirect()
     del out
-    return u''
+    return result
 
 def clean_range(start, end, limit):
     try:
         start = int(start)
-    except:
+    except (ValueError, TypeError):
         start = 1
     else:
         if start > limit:
             start = 1
 
     try:
+        print end
         end = int(end)
-    except:
+    except (ValueError, TypeError):
         end = limit
     else:
         if end > limit or end < start:
